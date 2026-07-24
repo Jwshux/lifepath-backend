@@ -19,7 +19,10 @@ def signup():
 
     if not is_valid_password(password):
         return jsonify({
-            'error': 'Password must be at least 8 characters and include a letter and a number.'
+            'error': (
+                'Password must be 8 to 64 characters long '
+                'and include at least one letter and one number.'
+            )
         }), 400
 
     if not username:

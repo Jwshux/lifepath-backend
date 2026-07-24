@@ -8,9 +8,10 @@ def is_valid_email(email):
 
 
 def is_valid_password(password):
-    # Minimum 8 characters, at least one letter and one number.
-    if not password or len(password) < 8:
+    if not password or not (8 <= len(password) <= 64):
         return False
+
     has_letter = any(char.isalpha() for char in password)
     has_number = any(char.isdigit() for char in password)
+
     return has_letter and has_number
