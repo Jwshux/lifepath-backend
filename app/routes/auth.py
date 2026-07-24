@@ -1,9 +1,14 @@
+import hashlib
+import secrets
+from datetime import datetime, timedelta, timezone
+
 from flask import Blueprint, request, jsonify
 
 from ..models.user import (
     find_user_by_email,
     find_user_by_username,
     create_user,
+    save_password_reset_code,
 )
 from ..utils.security import hash_password, check_password, generate_token
 from ..utils.validators import is_valid_email, is_valid_password
@@ -103,3 +108,47 @@ def check_username():
             else 'Username already taken.'
         ),
     }), 200
+
+@auth_bp.post('/forgot-password')
+def forgot_password():
+    data = request.get_json(silent=True) or {}
+    email = (data.get('email') or '').strip().lower()
+
+    generic_response = {
+        'message': (
+            'If an account exists for that email, '
+            'a password reset code has been sent.'
+        )
+    }
+
+    if not is_valid_email(email):
+        return jsonify(generic_response), 200
+
+    user = find_user_by_email(email)
+
+    if not user:
+        return jsonify(generic_response), 200
+
+    reset_code = f'{secrets.randbelow(1_000_000):06d}'
+
+    reset_code_hash = hashlib.sha256(
+        reset_code.encode('utf-8')
+    ).hexdigest()
+
+    expires_at = (
+        datetime.now(timezone.utc)
+        + timedelta(minutes=10)
+    )
+
+    save_password_reset_code(
+        user['_id'],
+        reset_code_hash,
+        expires_at,
+    )
+
+    print(
+        f'Password reset code for {email}: '
+        f'{reset_code}'
+    )
+
+    return jsonify(generic_response), 200

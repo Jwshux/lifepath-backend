@@ -22,3 +22,15 @@ def create_user(email, hashed_password, username):
         'username': username,
     })
     return result.inserted_id
+
+def save_password_reset_code(user_id, reset_code_hash, expires_at):
+    db.users.update_one(
+        {'_id': user_id},
+        {
+            '$set': {
+                'password_reset_code_hash': reset_code_hash,
+                'password_reset_expires_at': expires_at,
+                'password_reset_attempts': 0,
+            }
+        },
+    )
