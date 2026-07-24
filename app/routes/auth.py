@@ -2,7 +2,11 @@ import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
 from ..extensions import db
-from itsdangerous import URLSafeTimedSerializer
+from itsdangerous import (
+    URLSafeTimedSerializer,
+    BadSignature,
+    SignatureExpired,
+)
 from flask import current_app
 
 from flask import Blueprint, request, jsonify
@@ -13,6 +17,7 @@ from ..models.user import (
     create_user,
     save_password_reset_code,
     clear_password_reset_code,
+    update_user_password,
 )
 from ..utils.security import hash_password, check_password, generate_token
 from ..utils.validators import is_valid_email, is_valid_password
@@ -233,4 +238,66 @@ def verify_reset_code():
     return jsonify({
         'message': 'Reset code verified.',
         'reset_token': reset_token,
+    }), 200
+
+@auth_bp.post('/reset-password')
+def reset_password():
+    data = request.get_json(silent=True) or {}
+
+    reset_token = (data.get('reset_token') or '').strip()
+    new_password = data.get('new_password') or ''
+
+    if not reset_token or not new_password:
+        return jsonify({
+            'message': 'Reset token and new password are required.'
+        }), 400
+
+    if not is_valid_password(new_password):
+        return jsonify({
+            'message': (
+                'Password must be 8 to 64 characters long '
+                'and include at least one letter and one number.'
+            )
+        }), 400
+
+    serializer = URLSafeTimedSerializer(
+        current_app.config['SECRET_KEY']
+    )
+
+    try:
+        token_data = serializer.loads(
+            reset_token,
+            salt='password-reset',
+            max_age=600,
+        )
+    except SignatureExpired:
+        return jsonify({
+            'message': 'Password reset session has expired.'
+        }), 400
+    except BadSignature:
+        return jsonify({
+            'message': 'Invalid password reset session.'
+        }), 400
+
+    if token_data.get('purpose') != 'password-reset':
+        return jsonify({
+            'message': 'Invalid password reset session.'
+        }), 400
+
+    user_id = token_data.get('user_id')
+
+    if not user_id:
+        return jsonify({
+            'message': 'Invalid password reset session.'
+        }), 400
+
+    hashed_password = hash_password(new_password)
+
+    update_user_password(
+        user_id,
+        hashed_password,
+    )
+
+    return jsonify({
+        'message': 'Password has been reset successfully.'
     }), 200

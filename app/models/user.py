@@ -46,3 +46,13 @@ def clear_password_reset_code(user_id):
             }
         },
     )
+
+def update_user_password(user_id, hashed_password):
+    db.users.update_one(
+        {'_id': ObjectId(user_id)},
+        {
+            '$set': {
+                'password': hashed_password,
+            }
+        },
+    )
