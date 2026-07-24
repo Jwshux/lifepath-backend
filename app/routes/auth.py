@@ -1,8 +1,13 @@
 from flask import Blueprint, request, jsonify
 
-from ..models.user import find_user_by_email, create_user
+from ..models.user import (
+    find_user_by_email,
+    find_user_by_username,
+    create_user,
+)
 from ..utils.security import hash_password, check_password, generate_token
 from ..utils.validators import is_valid_email, is_valid_password
+
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -16,6 +21,9 @@ def signup():
 
     if not is_valid_email(email):
         return jsonify({'error': 'Please enter a valid email address.'}), 400
+
+    if find_user_by_username(username):
+        return jsonify({'error': 'Username is already taken.'}), 409
 
     if not is_valid_password(password):
         return jsonify({

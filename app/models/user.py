@@ -12,6 +12,8 @@ def find_user_by_id(user_id):
     except Exception:
         return None
 
+def find_user_by_username(username):
+    return db.users.find_one({'username': username})
 
 def create_user(email, hashed_password, username):
     result = db.users.insert_one({
