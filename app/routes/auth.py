@@ -125,8 +125,7 @@ def forgot_password():
 
     generic_response = {
         'message': (
-            'If an account exists for that email, '
-            'a password reset code has been sent.'
+            'Check your inbox for the 6-digit verification code.'
         )
     }
 
