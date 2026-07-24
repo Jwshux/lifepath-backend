@@ -77,3 +77,26 @@ def signin():
             'username': user['username'],
         },
     }), 200
+
+@auth_bp.get('/check-username')
+def check_username():
+    username = (
+        request.args.get('username') or ''
+    ).strip()
+
+    if len(username) < 3:
+        return jsonify({
+            'available': False,
+            'message': 'Username must be at least 3 characters long.',
+        }), 200
+
+    user = find_user_by_username(username)
+
+    return jsonify({
+        'available': user is None,
+        'message': (
+            'Username available.'
+            if user is None
+            else 'Username already taken.'
+        ),
+    }), 200
