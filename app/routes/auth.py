@@ -1,6 +1,9 @@
 import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
+from ..extensions import db
+from itsdangerous import URLSafeTimedSerializer
+from flask import current_app
 
 from flask import Blueprint, request, jsonify
 
@@ -9,6 +12,7 @@ from ..models.user import (
     find_user_by_username,
     create_user,
     save_password_reset_code,
+    clear_password_reset_code,
 )
 from ..utils.security import hash_password, check_password, generate_token
 from ..utils.validators import is_valid_email, is_valid_password
@@ -152,3 +156,81 @@ def forgot_password():
     )
 
     return jsonify(generic_response), 200
+
+@auth_bp.post('/verify-reset-code')
+def verify_reset_code():
+    data = request.get_json(silent=True) or {}
+
+    email = (data.get('email') or '').strip().lower()
+    reset_code = (data.get('code') or '').strip()
+
+    if not email or not reset_code:
+        return jsonify({
+            'message': 'Email and reset code are required.'
+        }), 400
+
+    user = find_user_by_email(email)
+
+    if not user:
+        return jsonify({
+            'message': 'Invalid or expired reset code.'
+        }), 400
+
+    stored_hash = user.get('password_reset_code_hash')
+    expires_at = user.get('password_reset_expires_at')
+    attempts = user.get('password_reset_attempts', 0)
+
+    if not stored_hash or not expires_at:
+        return jsonify({
+            'message': 'Invalid or expired reset code.'
+        }), 400
+    
+    if attempts >= 5:
+        clear_password_reset_code(user['_id'])
+
+        return jsonify({
+            'message': 'Invalid or expired reset code.'
+        }), 400
+
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if datetime.now(timezone.utc) > expires_at:
+        clear_password_reset_code(user['_id'])
+
+        return jsonify({
+            'message': 'Invalid or expired reset code.'
+        }), 400
+
+    submitted_hash = hashlib.sha256(
+        reset_code.encode('utf-8')
+    ).hexdigest()
+
+    if submitted_hash != stored_hash:
+        db.users.update_one(
+            {'_id': user['_id']},
+            {'$inc': {'password_reset_attempts': 1}},
+        )
+
+        return jsonify({
+            'message': 'Invalid or expired reset code.'
+        }), 400
+
+    serializer = URLSafeTimedSerializer(
+        current_app.config['SECRET_KEY']
+    )
+
+    reset_token = serializer.dumps(
+        {
+            'user_id': str(user['_id']),
+            'purpose': 'password-reset',
+        },
+        salt='password-reset',
+    )
+
+    clear_password_reset_code(user['_id'])
+
+    return jsonify({
+        'message': 'Reset code verified.',
+        'reset_token': reset_token,
+    }), 200

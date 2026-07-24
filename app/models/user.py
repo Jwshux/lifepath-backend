@@ -34,3 +34,15 @@ def save_password_reset_code(user_id, reset_code_hash, expires_at):
             }
         },
     )
+
+def clear_password_reset_code(user_id):
+    db.users.update_one(
+        {'_id': user_id},
+        {
+            '$unset': {
+                'password_reset_code_hash': '',
+                'password_reset_expires_at': '',
+                'password_reset_attempts': '',
+            }
+        },
+    )
