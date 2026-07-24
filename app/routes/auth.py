@@ -53,18 +53,21 @@ def signup():
 @auth_bp.post('/signin')
 def signin():
     data = request.get_json(silent=True) or {}
-    email = (data.get('email') or '').strip().lower()
+
+    username = (data.get('username') or '').strip()
     password = data.get('password') or ''
 
-    if not email or not password:
-        return jsonify({'error': 'Email and password are required.'}), 400
+    if not username or not password:
+        return jsonify({
+            'error': 'Username and password are required.'
+        }), 400
 
-    user = find_user_by_email(email)
+    user = find_user_by_username(username)
 
-    # Same generic error whether the email doesn't exist or the password is
-    # wrong — avoids revealing which emails are registered.
     if not user or not check_password(password, user['password']):
-        return jsonify({'error': 'Invalid email or password.'}), 401
+        return jsonify({
+            'error': 'Invalid username or password.'
+        }), 401
 
     token = generate_token(user['_id'])
 
