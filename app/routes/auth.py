@@ -8,7 +8,7 @@ from itsdangerous import (
     SignatureExpired,
 )
 from flask import current_app
-
+from ..utils.email import send_account_recovery_email
 from flask import Blueprint, request, jsonify
 
 from ..models.user import (
@@ -118,14 +118,14 @@ def check_username():
         ),
     }), 200
 
-@auth_bp.post('/forgot-password')
-def forgot_password():
+@auth_bp.post('/account-recovery')
+def account_recovery():
     data = request.get_json(silent=True) or {}
     email = (data.get('email') or '').strip().lower()
 
     generic_response = {
         'message': (
-            'Check your inbox for the 6-digit verification code.'
+            'Check your inbox for your account recovery instructions.'  
         )
     }
 
@@ -154,10 +154,16 @@ def forgot_password():
         expires_at,
     )
 
-    print(
-        f'Password reset code for {email}: '
-        f'{reset_code}'
-    )
+    try:
+        send_account_recovery_email(
+            recipient_email=email,
+            username=user['username'],
+            reset_code=reset_code,
+        )
+    except Exception:
+        current_app.logger.exception(
+            'Failed to send account recovery email.'
+        )
 
     return jsonify(generic_response), 200
 
