@@ -20,6 +20,7 @@ def create_user(email, hashed_password, username):
         'email': email,
         'password': hashed_password,
         'username': username,
+        'role': 'user',
     })
     return result.inserted_id
 

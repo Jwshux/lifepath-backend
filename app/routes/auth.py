@@ -60,7 +60,12 @@ def signup():
     return jsonify({
         'message': 'Account created successfully.',
         'token': token,
-        'user': {'id': str(user_id), 'email': email, 'username': username},
+        'user': {
+            'id': str(user_id),
+            'email': email,
+            'username': username,
+            'role': 'user',
+        },
     }), 201
 
 
@@ -92,6 +97,7 @@ def signin():
             'id': str(user['_id']),
             'email': user['email'],
             'username': user['username'],
+            'role': user.get('role', 'user'),
         },
     }), 200
 
