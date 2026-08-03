@@ -1,6 +1,10 @@
-from flask_mail import Message
+from html import escape
 
-from ..extensions import mail
+import requests
+from flask import current_app
+
+
+BREVO_EMAIL_URL = 'https://api.brevo.com/v3/smtp/email'
 
 
 def send_account_recovery_email(
@@ -8,12 +12,40 @@ def send_account_recovery_email(
     username,
     reset_code,
 ):
-    message = Message(
-        subject='LifePATH Account Recovery',
-        recipients=[recipient_email],
+    api_key = current_app.config.get(
+        'BREVO_API_KEY'
     )
 
-    message.body = f"""Hi {username},
+    sender_email = current_app.config.get(
+        'MAIL_SENDER_EMAIL'
+    )
+
+    sender_name = current_app.config.get(
+        'MAIL_SENDER_NAME',
+        'LifePATH',
+    )
+
+    if not api_key:
+        raise RuntimeError(
+            'BREVO_API_KEY is not configured.'
+        )
+
+    if not sender_email:
+        raise RuntimeError(
+            'MAIL_SENDER_EMAIL is not configured.'
+        )
+
+    if not recipient_email:
+        raise ValueError(
+            'A recipient email address is required.'
+        )
+
+    safe_username = escape(str(username))
+    safe_reset_code = escape(str(reset_code))
+
+    subject = 'LifePATH Account Recovery'
+
+    text_content = f"""Hi {username},
 
 We received a request to recover your LifePATH account.
 
@@ -29,12 +61,15 @@ If you did not request this recovery, you can safely ignore this email.
 — The LifePATH Team
 """
 
-    message.html = f"""
+    html_content = f"""
     <!doctype html>
     <html lang="en">
       <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1"
+        >
         <title>LifePATH Account Recovery</title>
       </head>
 
@@ -74,10 +109,11 @@ If you did not request this recovery, you can safely ignore this email.
                   border: 1px solid #ddd2c5;
                   border-radius: 18px;
                   overflow: hidden;
-                  box-shadow: 0 18px 40px rgba(56, 36, 23, 0.12);
+                  box-shadow:
+                    0 18px 40px
+                    rgba(56, 36, 23, 0.12);
                 "
               >
-                <!-- Top accent -->
                 <tr>
                   <td
                     style="
@@ -92,7 +128,6 @@ If you did not request this recovery, you can safely ignore this email.
                   </td>
                 </tr>
 
-                <!-- Header -->
                 <tr>
                   <td
                     style="
@@ -102,7 +137,10 @@ If you did not request this recovery, you can safely ignore this email.
                   >
                     <div
                       style="
-                        font-family: Georgia, 'Times New Roman', serif;
+                        font-family:
+                          Georgia,
+                          'Times New Roman',
+                          serif;
                         font-size: 28px;
                         line-height: 1;
                         color: #3b2a20;
@@ -110,7 +148,10 @@ If you did not request this recovery, you can safely ignore this email.
                     >
                       Life<span
                         style="
-                          font-family: Arial, Helvetica, sans-serif;
+                          font-family:
+                            Arial,
+                            Helvetica,
+                            sans-serif;
                           font-size: 18px;
                           font-weight: 700;
                           letter-spacing: 0.12em;
@@ -131,7 +172,6 @@ If you did not request this recovery, you can safely ignore this email.
                   </td>
                 </tr>
 
-                <!-- Main content -->
                 <tr>
                   <td style="padding: 8px 32px 38px;">
                     <p
@@ -142,7 +182,8 @@ If you did not request this recovery, you can safely ignore this email.
                         color: #3b2a20;
                       "
                     >
-                      Hi <strong>{username}</strong>,
+                      Hi
+                      <strong>{safe_username}</strong>,
                     </p>
 
                     <p
@@ -153,11 +194,11 @@ If you did not request this recovery, you can safely ignore this email.
                         color: #5f4a3e;
                       "
                     >
-                      We received a request to recover your LifePATH account.
-                      Use the details below to continue.
+                      We received a request to recover
+                      your LifePATH account. Use the
+                      details below to continue.
                     </p>
 
-                    <!-- Username card -->
                     <table
                       role="presentation"
                       width="100%"
@@ -194,13 +235,12 @@ If you did not request this recovery, you can safely ignore this email.
                               color: #3b2a20;
                             "
                           >
-                            {username}
+                            {safe_username}
                           </p>
                         </td>
                       </tr>
                     </table>
 
-                    <!-- Verification code -->
                     <table
                       role="presentation"
                       width="100%"
@@ -235,7 +275,9 @@ If you did not request this recovery, you can safely ignore this email.
                           <p
                             style="
                               margin: 0;
-                              font-family: 'Courier New', monospace;
+                              font-family:
+                                'Courier New',
+                                monospace;
                               font-size: 46px;
                               font-weight: 700;
                               line-height: 1;
@@ -243,13 +285,12 @@ If you did not request this recovery, you can safely ignore this email.
                               color: #ffffff;
                             "
                           >
-                            {reset_code}
+                            {safe_reset_code}
                           </p>
                         </td>
                       </tr>
                     </table>
 
-                    <!-- Expiration notice -->
                     <p
                       style="
                         margin: 0 0 18px;
@@ -259,12 +300,13 @@ If you did not request this recovery, you can safely ignore this email.
                       "
                     >
                       This verification code expires in
-                      <strong style="color: #6f8464;">
+                      <strong
+                        style="color: #6f8464;"
+                      >
                         10 minutes
                       </strong>.
                     </p>
 
-                    <!-- Security reminder -->
                     <table
                       role="presentation"
                       width="100%"
@@ -274,7 +316,8 @@ If you did not request this recovery, you can safely ignore this email.
                       style="
                         width: 100%;
                         background-color: #f3eee7;
-                        border-left: 4px solid #6f8464;
+                        border-left:
+                          4px solid #6f8464;
                         border-radius: 10px;
                       "
                     >
@@ -301,9 +344,12 @@ If you did not request this recovery, you can safely ignore this email.
                               color: #6f5b4f;
                             "
                           >
-                            Never share this code with anyone. LifePATH will
-                            never ask you for this code. If you did not request
-                            account recovery, you can safely ignore this email.
+                            Never share this code with
+                            anyone. LifePATH will never
+                            ask you for this code. If you
+                            did not request account
+                            recovery, you can safely
+                            ignore this email.
                           </p>
                         </td>
                       </tr>
@@ -311,12 +357,12 @@ If you did not request this recovery, you can safely ignore this email.
                   </td>
                 </tr>
 
-                <!-- Footer -->
                 <tr>
                   <td
                     style="
                       padding: 22px 32px 28px;
-                      border-top: 1px solid #e5ddd4;
+                      border-top:
+                        1px solid #e5ddd4;
                       text-align: center;
                     "
                   >
@@ -349,4 +395,50 @@ If you did not request this recovery, you can safely ignore this email.
     </html>
     """
 
-    mail.send(message)
+    try:
+        response = requests.post(
+            BREVO_EMAIL_URL,
+            headers={
+                'accept': 'application/json',
+                'api-key': api_key,
+                'content-type': 'application/json',
+            },
+            json={
+                'sender': {
+                    'name': sender_name,
+                    'email': sender_email,
+                },
+                'to': [
+                    {
+                        'email': recipient_email,
+                        'name': str(username),
+                    },
+                ],
+                'subject': subject,
+                'textContent': text_content,
+                'htmlContent': html_content,
+            },
+            timeout=15,
+        )
+    except requests.RequestException as error:
+        raise RuntimeError(
+            'Unable to connect to the email service.'
+        ) from error
+
+    if not response.ok:
+        current_app.logger.error(
+            'Brevo email request failed with status %s: %s',
+            response.status_code,
+            response.text,
+        )
+
+        raise RuntimeError(
+            'Unable to send the recovery email.'
+        )
+
+    if response.content:
+        return response.json()
+
+    return {
+        'message': 'Recovery email sent successfully.',
+    }
