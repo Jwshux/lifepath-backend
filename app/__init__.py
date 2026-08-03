@@ -21,6 +21,7 @@ def create_app():
     from .routes.auth import auth_bp
     from .routes.feedback import feedback_bp
     from .routes.admin import admin_bp
+    from .routes.releases import releases_bp
 
     app.register_blueprint(
         auth_bp,
@@ -35,6 +36,11 @@ def create_app():
     app.register_blueprint(
         admin_bp,
         url_prefix='/api/admin',
+    )
+
+    app.register_blueprint(
+    releases_bp,
+    url_prefix='/api/releases',
     )
 
     @app.get('/api/health')
