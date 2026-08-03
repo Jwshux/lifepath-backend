@@ -2,7 +2,10 @@ from flask import Blueprint, jsonify
 
 from ..extensions import db
 from ..utils.admin import admin_required
-
+from ..models.feedback import (
+    get_all_feedback,
+    delete_feedback,
+)
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -47,4 +50,28 @@ def get_dashboard(current_admin):
         'feedback_received': feedback_received,
         'current_version': current_version,
         'latest_upload': latest_upload,
+    }), 200
+
+@admin_bp.get('/feedback')
+@admin_required
+def get_admin_feedback(current_admin):
+    entries = get_all_feedback()
+
+    return jsonify({
+        'feedback': entries,
+    }), 200
+
+@admin_bp.delete('/feedback/<feedback_id>')
+@admin_required
+def remove_admin_feedback(feedback_id, current_admin):
+    deleted = delete_feedback(feedback_id)
+
+    if not deleted:
+        return jsonify({
+            'error': 'Feedback not found.',
+        }), 404
+
+    return jsonify({
+        'message': 'Feedback deleted successfully.',
+        'id': feedback_id,
     }), 200
