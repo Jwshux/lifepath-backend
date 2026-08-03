@@ -23,6 +23,10 @@ def public_release_data(release):
         'file_name': release.get('file_name'),
         'file_size': release.get('file_size'),
         'uploaded_at': release.get('uploaded_at'),
+        'release_notes': release.get(
+            'release_notes',
+            '',
+        ),
     }
 
 
