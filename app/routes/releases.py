@@ -1,8 +1,12 @@
-from flask import Blueprint, current_app, jsonify
+from flask import Blueprint, current_app, jsonify, request
+from flask_limiter.util import get_remote_address
 
+from ..extensions import limiter
 from ..models.release import get_current_release
-from ..utils.storage import generate_download_url
 from ..utils.auth import user_required
+from ..utils.security import decode_token
+from ..utils.storage import generate_download_url
+
 
 releases_bp = Blueprint('releases', __name__)
 
@@ -22,6 +26,22 @@ def public_release_data(release):
     }
 
 
+def get_download_user_key():
+    authorization = request.headers.get(
+        'Authorization',
+        '',
+    )
+
+    if authorization.startswith('Bearer '):
+        token = authorization.split(' ', 1)[1].strip()
+        user_id = decode_token(token)
+
+        if user_id:
+            return f'user:{user_id}'
+
+    return f'ip:{get_remote_address()}'
+
+
 @releases_bp.get('/latest')
 def get_latest_release():
     release = get_current_release()
@@ -32,6 +52,14 @@ def get_latest_release():
 
 
 @releases_bp.get('/download')
+@limiter.limit(
+    '10 per hour',
+    key_func=get_remote_address,
+)
+@limiter.limit(
+    '20 per day',
+    key_func=get_download_user_key,
+)
 @user_required
 def download_latest_release(current_user):
     release = get_current_release()

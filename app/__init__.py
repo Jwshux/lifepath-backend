@@ -1,7 +1,13 @@
-from flask import Flask
+from flask import Flask, jsonify
 
 from .config import Config
-from .extensions import bcrypt, cors, init_mongo, mail
+from .extensions import (
+    bcrypt,
+    cors,
+    init_mongo,
+    limiter,
+    mail,
+)
 
 
 def create_app():
@@ -10,6 +16,7 @@ def create_app():
 
     bcrypt.init_app(app)
     mail.init_app(app)
+    limiter.init_app(app)
 
     cors.init_app(
         app,
@@ -18,9 +25,9 @@ def create_app():
 
     init_mongo(app)
 
+    from .routes.admin import admin_bp
     from .routes.auth import auth_bp
     from .routes.feedback import feedback_bp
-    from .routes.admin import admin_bp
     from .routes.releases import releases_bp
 
     app.register_blueprint(
@@ -39,12 +46,21 @@ def create_app():
     )
 
     app.register_blueprint(
-    releases_bp,
-    url_prefix='/api/releases',
+        releases_bp,
+        url_prefix='/api/releases',
     )
 
     @app.get('/api/health')
     def health_check():
         return {'status': 'ok'}, 200
+
+    @app.errorhandler(429)
+    def rate_limit_exceeded(error):
+        return jsonify({
+            'error': (
+                'Download limit reached. '
+                'Please try again later.'
+            ),
+        }), 429
 
     return app
