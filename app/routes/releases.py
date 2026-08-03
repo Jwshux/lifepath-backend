@@ -2,7 +2,7 @@ from flask import Blueprint, current_app, jsonify
 
 from ..models.release import get_current_release
 from ..utils.storage import generate_download_url
-
+from ..utils.auth import user_required
 
 releases_bp = Blueprint('releases', __name__)
 
@@ -32,7 +32,8 @@ def get_latest_release():
 
 
 @releases_bp.get('/download')
-def download_latest_release():
+@user_required
+def download_latest_release(current_user):
     release = get_current_release()
 
     if not release:
