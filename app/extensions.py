@@ -9,12 +9,15 @@ bcrypt = Bcrypt()
 cors = CORS()
 mail = Mail()
 
+import os
+
 limiter = Limiter(
     key_func=get_remote_address,
-    default_limits=[],
-    storage_uri='memory://',
+    storage_uri=os.getenv(
+        "REDIS_URL",
+        "memory://",
+    ),
 )
-
 mongo_client = None
 db = None
 
