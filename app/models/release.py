@@ -31,7 +31,11 @@ def serialize_release(release):
             else None
         ),
         'uploaded_at': (
-            uploaded_at.isoformat()
+            uploaded_at.replace(
+                tzinfo=timezone.utc
+            ).isoformat()
+            if uploaded_at and uploaded_at.tzinfo is None
+            else uploaded_at.isoformat()
             if uploaded_at
             else None
         ),

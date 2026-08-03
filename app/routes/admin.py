@@ -1,3 +1,5 @@
+import re
+
 from flask import Blueprint, current_app, jsonify, request
 
 from ..extensions import db
@@ -20,6 +22,16 @@ from ..utils.storage import (
 
 
 admin_bp = Blueprint('admin', __name__)
+
+
+VERSION_PATTERN = re.compile(
+    r'^v?\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$'
+)
+
+ANDROID_REQUIREMENT_PATTERN = re.compile(
+    r'^Android\s+\d+(?:\.\d+)?\s+and\s+up$',
+    re.IGNORECASE,
+)
 
 
 @admin_bp.get('/me')
@@ -122,6 +134,14 @@ def upload_release(current_admin):
             'error': 'Version must not exceed 50 characters.',
         }), 400
 
+    if not VERSION_PATTERN.fullmatch(version):
+        return jsonify({
+            'error': (
+                'Version must use a format such as '
+                'v1.2.0 or v1.2.0-beta.'
+            ),
+        }), 400
+
     if not android_requirement:
         return jsonify({
             'error': 'Android requirement is required.',
@@ -132,6 +152,16 @@ def upload_release(current_admin):
             'error': (
                 'Android requirement must not exceed '
                 '100 characters.'
+            ),
+        }), 400
+
+    if not ANDROID_REQUIREMENT_PATTERN.fullmatch(
+        android_requirement
+    ):
+        return jsonify({
+            'error': (
+                'Android requirement must use a format '
+                'such as "Android 9.0 and up".'
             ),
         }), 400
 
