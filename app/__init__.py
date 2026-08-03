@@ -1,3 +1,5 @@
+import os
+
 from flask import Flask, jsonify
 
 from .config import Config
@@ -20,9 +22,25 @@ def create_app():
 
     cors.init_app(
         app,
-        origins=['http://localhost:3000'],
+        origins=[
+            os.getenv(
+                'FRONTEND_URL',
+                'http://localhost:3000',
+            )
+        ],
+        allow_headers=[
+            'Content-Type',
+            'Authorization',
+        ],
+        methods=[
+            'GET',
+            'POST',
+            'PUT',
+            'DELETE',
+            'OPTIONS',
+        ],
     )
-
+    
     init_mongo(app)
 
     from .routes.admin import admin_bp
