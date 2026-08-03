@@ -20,14 +20,18 @@ def create_app():
     mail.init_app(app)
     limiter.init_app(app)
 
+    allowed_origins = [
+        origin.strip()
+        for origin in os.getenv(
+            'FRONTEND_URLS',
+            'http://localhost:3000',
+        ).split(',')
+        if origin.strip()
+    ]
+
     cors.init_app(
         app,
-        origins=[
-            os.getenv(
-                'FRONTEND_URL',
-                'http://localhost:3000',
-            )
-        ],
+        origins=allowed_origins,
         allow_headers=[
             'Content-Type',
             'Authorization',
@@ -40,7 +44,7 @@ def create_app():
             'OPTIONS',
         ],
     )
-    
+
     init_mongo(app)
 
     from .routes.admin import admin_bp
